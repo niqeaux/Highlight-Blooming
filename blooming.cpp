@@ -9,15 +9,15 @@ void bloomifyImage(Mat srcColor, Mat dst, bool bloomingMode) {
 
 	if (bloomingMode) {
 		Mat tmp = Mat(srcGray.size(), CV_8UC1);
-		//Mat tmp3 = Mat(srcGray.size(), CV_32FC1);
-		int radius = 100;
+
+		int radius = 10;
 
 		// add mirror padding
 		copyMakeBorder(srcGray, tmp, radius, radius, radius, radius, BORDER_REFLECT_101);
 		Mat tmp2 = Mat(tmp.size(), CV_32FC1);
 
 		// darken low intensity pixels with power function
-		tmp.convertTo(tmp, CV_32F, 1.f/255);
+		tmp.convertTo(tmp, CV_32F, 1.f / 255);
 		pow(tmp, 10, tmp);
 		tmp = tmp * 255;
 		tmp.convertTo(tmp, CV_8U);
@@ -45,14 +45,11 @@ void bloomifyImage(Mat srcColor, Mat dst, bool bloomingMode) {
 		int radu = (wu - 1) / 2;
 
 		// filter integral image
-		int r, c;
-		uchar* p;
-		for (int r = radius; r < tmp.rows - radius; ++r) {
-			p = tmp.ptr<uchar>(r);
-			for (int c = radius; c < tmp.cols - radius; ++c) {
-				p[c] = round((tmp2.at<float>(r + radius, c + radius) - tmp2.at<float>(r - radius, c + radius)
-					- tmp2.at<float>(r + radius, c - radius) + tmp2.at<float>(r - radius, c - radius)) / (radius * radius));
-			}
+		for (int i = 0; i < m; ++i) {
+			integAverage(tmp, radl);
+		}
+		for (int j = 0; j < n - m; ++j) {
+			integAverage(tmp, radu);
 		}
 
 		// crop to original size
@@ -63,6 +60,7 @@ void bloomifyImage(Mat srcColor, Mat dst, bool bloomingMode) {
 
 		// add to image
 		dst = srcColor + tmp;
+
 	}
 	else {
 		srcColor.copyTo(dst);
@@ -70,3 +68,21 @@ void bloomifyImage(Mat srcColor, Mat dst, bool bloomingMode) {
 	}
 }
 
+void integAverage(Mat image, int radius) {
+
+	Mat tmpImage = Mat(image.size(), CV_32FC1);
+
+	integral(image, tmpImage, CV_32F); // create integral image
+
+	int down = radius;
+	int up = down + 1;
+	int r, c;
+	uchar* p;
+	for (int r = up; r < image.rows - down; ++r) {
+		p = image.ptr<uchar>(r);
+		for (int c = up; c < image.cols - down; ++c) {
+			p[c] = round((tmpImage.at<float>(r + down, c + down) - tmpImage.at<float>(r - up, c + down)
+				- tmpImage.at<float>(r + down, c - up) + tmpImage.at<float>(r - up, c - up)) / ((up + down) * (up + down)));
+		}
+	}
+}
